@@ -4,7 +4,7 @@
 - 2024.05.17-0 init 
 - 2024.05.17-1 使用Kmeans聚15类划分，并保证所有图片全覆盖，大约相邻范围内有10-40左右的重叠视角
 - 2024.05.17-2 单机双卡训练
-- 2024.05.17-3 开始测试15类全覆盖的client的精度
+- 2024.05.17-3/4 开始测试15类全覆盖的client的精度
 
 
 ## Training Local Models:
@@ -17,7 +17,21 @@ python tools/gen_client_data.py -d datasets/rubble-pixsfm \
 
 
 ``` bash
-bash scripts/client_training.sh 0 15 outputs/rubble-pixsfm_colmap_results \
+bash scripts/client_training.sh 0 7 outputs/rubble-pixsfm_colmap_results \
+                                     datasets/rubble-pixsfm \
+                                     client_image_lists/rubble-pixsfm_k_means \
+                                     outputs/rubble-pixsfm_local_models
+```
+
+``` bash
+bash scripts/device_0_training.sh 0 7 outputs/rubble-pixsfm_colmap_results \
+                                     datasets/rubble-pixsfm \
+                                     client_image_lists/rubble-pixsfm_k_means \
+                                     outputs/rubble-pixsfm_local_models
+```
+
+``` bash
+bash scripts/device_1_training.sh 8 14 outputs/rubble-pixsfm_colmap_results \
                                      datasets/rubble-pixsfm \
                                      client_image_lists/rubble-pixsfm_k_means \
                                      outputs/rubble-pixsfm_local_models
