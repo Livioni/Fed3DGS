@@ -9,5 +9,5 @@ OUTPUT_DIR=$6
 
 # 循环处理每个序列
 for i in `seq -f '%05g' $1 $2`; do
-    python gaussian-splatting/train.py -s $COLMAP_RESULTS_DIR/$i -i $DATASET_ROOT/train/rgbs -w -m $OUTPUT_DIR/$i
+    python gaussian-splatting/train.py -s $COLMAP_RESULTS_DIR/$i -i $DATASET_ROOT/train/rgbs -w -m $OUTPUT_DIR/$i -port 6009
 done
