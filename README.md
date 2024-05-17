@@ -1,11 +1,11 @@
 
-$$ Logs
+## Logs
 
 - 2024.05.17-0 init 
 - 2024.05.17-1 使用Kmeans聚15类划分，并保证所有图片全覆盖，大约相邻范围内有10-40左右的重叠视角
 
 
-$$ Training Local Models:
+## Training Local Models:
 ```bash
 python tools/gen_client_data.py -d datasets/rubble-pixsfm \
                                 -o datasets/rubble-pixsfm_image_lists \
