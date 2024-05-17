@@ -56,7 +56,7 @@ if __name__=='__main__':
                         type=int,
                         help='minimum number of clients data')
     parser.add_argument('--n-data-max', '-max',
-                        default=200,
+                        default=155,
                         type=int,
                         help='maximum number of clients data')
     args = parser.parse_args()

@@ -354,13 +354,13 @@ if __name__=='__main__':
     parser.add_argument('--shuffle', action='store_true',
                         help='if True, randomly aggregating client models')
     ### model args
-    parser.add_argument('--sh-degree', default=2, type=int)
+    parser.add_argument('--sh-degree', default=3, type=int)
     parser.add_argument('--load-iteration', '-liter', default='20000', type=str)
     parser.add_argument('--white-bg', '-w', action='store_true')
     ### alignment args
     parser.add_argument('--lr', default=1e-3, type=float,
                         help='learning rate for alignment')
-    parser.add_argument('--overlap-img-threshold', '-oth', default=20, type=int)
+    parser.add_argument('--overlap-img-threshold', '-oth', default=0, type=int)
     ### aggregation args
     parser.add_argument('--min-opacity', '-min-o', default=0.005, type=float)
     parser.add_argument('--n-clients', default=-1, type=int)

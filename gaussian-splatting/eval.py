@@ -138,7 +138,7 @@ if __name__=='__main__':
                         help='learning rate')
     parser.add_argument('--n-iter', default=100, type=int)
     ### model args
-    parser.add_argument('--sh-degree', default=2, type=int)
+    parser.add_argument('--sh-degree', default=3, type=int)
     parser.add_argument('--white-bg', '-w', action='store_true')
     ### misc
     parser.add_argument('--resolution', '-r', default=4, type=int)
