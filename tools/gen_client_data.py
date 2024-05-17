@@ -7,9 +7,53 @@ import numpy as np
 import torch
 
 from tqdm import tqdm
+import numpy as np
+from sklearn.cluster import KMeans
 
+def perform_kmeans(data, n_clusters):
+    """
+    使用 K-means 算法对三维坐标数据进行聚类。
 
-def gen_client_data(c2ws: np.ndarray, n_data: int):
+    Args:
+        data (np.ndarray): 输入数据，形状为 (n_samples, 3)，包含每个点的 x, y, z 坐标。
+        n_clusters (int): 要分成的聚类数目。
+
+    Returns:
+        labels (np.ndarray): 每个数据点的聚类标签。
+        centers (np.ndarray): 聚类的中心点坐标。
+    """
+    # 初始化 KMeans 模型
+    kmeans = KMeans(n_clusters=n_clusters)
+    
+    # 对数据进行拟合和预测
+    labels = kmeans.fit_predict(data)
+    
+    # 获取聚类中心点
+    centers = kmeans.cluster_centers_
+    
+    return labels, centers
+
+def count_points_in_clusters(labels, n_clusters):
+    """
+    计算每个聚类中的点的数量。
+
+    Args:
+        labels (np.ndarray): 每个数据点的聚类标签，由 K-means 聚类算法生成。
+        n_clusters (int): 聚类的数量，应与 K-means 聚类时使用的数量相同。
+
+    Returns:
+        counts (np.ndarray): 每个聚类中的点数。
+    """
+    # 初始化一个数组，用于计数每个聚类的点数
+    counts = np.zeros(n_clusters, dtype=int)
+    
+    # 计算每个聚类的点数
+    for label in labels:
+        counts[label] += 1
+    
+    return counts
+
+def gen_client_data(c2ws: np.ndarray, n_data: int, camera_centers: np.ndarray = None):
     """
     Args:
         c2ws (np.ndarray): camera extrinsic (camera2world) that is
@@ -24,8 +68,11 @@ def gen_client_data(c2ws: np.ndarray, n_data: int):
     n_cameras = c2ws.shape[0]
     xyz_coord = c2ws[:, :3, -1] # (#cameras, 3)
     
-    base_camera_idx = np.random.randint(0, n_cameras)
-    center_xyz = xyz_coord[base_camera_idx]
+    if camera_centers is None:
+        base_camera_idx = np.random.randint(n_cameras)
+        center_xyz = xyz_coord[base_camera_idx]
+    else:
+        center_xyz = camera_centers
     dists = np.sum(np.square(xyz_coord - center_xyz), -1)
     
     indices = np.argsort(dists, 0)[:n_data]
@@ -51,12 +98,16 @@ if __name__=='__main__':
                         default=200,
                         type=int,
                         help='number of clients')
+    parser.add_argument('--n-pre-clients',
+                        default=150,
+                        type=int,
+                        help='number of images for clients')
     parser.add_argument('--n-data-min', '-min',
                         default=100,
                         type=int,
                         help='minimum number of clients data')
     parser.add_argument('--n-data-max', '-max',
-                        default=155,
+                        default=150,
                         type=int,
                         help='maximum number of clients data')
     args = parser.parse_args()
@@ -73,8 +124,13 @@ if __name__=='__main__':
     
     print('split data')
     os.makedirs(args.output_dir, exist_ok=True)
+    
+    xyz_coord = c2ws[:, :3, -1] # (#cameras, 3)
+    labels, centers = perform_kmeans(xyz_coord, args.n_clients)
+    cluster_counts = count_points_in_clusters(labels, args.n_clients)
+    n_data = cluster_counts + np.random.randint(args.n_data_max - cluster_counts)
     for i in range(args.n_clients):
-        n_data = np.random.randint(args.n_data_min, args.n_data_max + 1)
-        indices = gen_client_data(c2ws, n_data)
+        camera_centers = centers[i]
+        indices = gen_client_data(c2ws, n_data[i], camera_centers)
         training_image_names = [fnames[idx] for idx in indices]
         np.savetxt(os.path.join(args.output_dir, str(i).zfill(5) + '.txt'), training_image_names, fmt="%s")
