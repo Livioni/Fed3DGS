@@ -5,6 +5,7 @@
 - 2024.05.17-1 使用Kmeans聚15类划分，并保证所有图片全覆盖，大约相邻范围内有10-40左右的重叠视角
 - 2024.05.17-2 单机双卡训练
 - 2024.05.17-3/4 开始测试15类全覆盖的client的精度
+- 2024.05.20-1 注解代码1
 
 
 ## Training Local Models:
@@ -48,8 +49,12 @@ python gaussian-splatting/train.py -s outputs/rubble-pixsfm_colmap_results/00004
 python gaussian-splatting/build_global_model.py \
                                                 -w -o outputs/global_model \
                                                 -m outputs/rubble-pixsfm_local_models  \
-                                                -i datasets/rubble-pixsfm_image_lists \
+                                                -i client_image_lists/rubble-pixsfm_k_means \
                                                 -data datasets/rubble-pixsfm \
                                                 --sh-degree 3
 ```
 
+```bash
+python eval.py -w -o eval -g outputs/global_model/kmeans_15_clients/global_model.pth -data datasets/rubble-pixsfm
+
+```

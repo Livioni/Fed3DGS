@@ -39,17 +39,18 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
     gaussians = GaussianModel(dataset.sh_degree)
     scene = Scene(dataset, gaussians)
     gaussians.training_setup(opt)
-    if checkpoint:
+    ## 初始化高斯点
+    if checkpoint: # Load checkpoint
         (model_params, first_iter) = torch.load(checkpoint)
         gaussians.restore(model_params, opt)
 
     bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
     background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
 
-    iter_start = torch.cuda.Event(enable_timing = True)
+    iter_start = torch.cuda.Event(enable_timing = True) #用于精准记录GPU上的训练时间
     iter_end = torch.cuda.Event(enable_timing = True)
 
-    viewpoint_stack = scene.getTrainCameras().copy()
+    viewpoint_stack = scene.getTrainCameras().copy() #将该client的训练数据拷贝一份，包括各个视角的图片和相机参数
     training_data_idx = None
     ema_loss_for_log = 0.0
     progress_bar = tqdm(range(first_iter, opt.iterations), desc="Training progress")
@@ -70,9 +71,9 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
             except Exception as e:
                 network_gui.conn = None
 
-        iter_start.record()
+        iter_start.record() #记录开始时间
 
-        gaussians.update_learning_rate(iteration)
+        gaussians.update_learning_rate(iteration) #根据迭代次数更新学习率
 
         # Every 1000 its we increase the levels of SH up to a maximum degree
         if iteration % 1000 == 0:
@@ -80,22 +81,22 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
 
         # Pick a random Camera
         if not training_data_idx:
-            training_data_idx = torch.arange(len(viewpoint_stack)).tolist()
-        sampled_idx = randint(0, len(training_data_idx)-1)
-        train_idx = training_data_idx.pop(sampled_idx)
-        viewpoint_cam = viewpoint_stack[train_idx]
+            training_data_idx = torch.arange(len(viewpoint_stack)).tolist() #生成训练图片的索引
+        sampled_idx = randint(0, len(training_data_idx)-1) #随机选择一个图片
+        train_idx = training_data_idx.pop(sampled_idx) #将该图片从训练集中移除
+        viewpoint_cam = viewpoint_stack[train_idx] #选择该图片的相机参数
 
         # Render
         if (iteration - 1) == debug_from:
             pipe.debug = True
         render_pkg = render(viewpoint_cam, gaussians, pipe, train_idx, background)
-        image, viewspace_point_tensor, visibility_filter, radii = (render_pkg["render"],
+        image, viewspace_point_tensor, visibility_filter, radii = (render_pkg["render"], #渲染结果
                                                                    render_pkg["viewspace_points"],
                                                                    render_pkg["visibility_filter"],
                                                                    render_pkg["radii"])
 
         # Loss
-        gt_image = viewpoint_cam.original_image
+        gt_image = viewpoint_cam.original_image #真实图片 torch.Size([3, 864, 1152])
         if isinstance(gt_image, torch.Tensor):
             gt_image = gt_image.cuda()
         else:
@@ -110,14 +111,14 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
 
         loss.backward()
 
-        iter_end.record()
+        iter_end.record() #记录一次结束时间
 
         with torch.no_grad():
             # Progress bar
-            ema_loss_for_log = 0.4 * loss.item() + 0.6 * ema_loss_for_log
+            ema_loss_for_log = 0.4 * loss.item() + 0.6 * ema_loss_for_log #指数移动平均
             if iteration % 10 == 0:
-                progress_bar.set_postfix({"Loss": f"{ema_loss_for_log:.{7}f}"})
-                progress_bar.update(10)
+                progress_bar.set_postfix({"Loss": f"{ema_loss_for_log:.{7}f}"}) #设置进度条的显示内容
+                progress_bar.update(10) #更新进度条
             if iteration == opt.iterations:
                 progress_bar.close()
 
@@ -130,20 +131,20 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
             # Densification
             if iteration < opt.densify_until_iter:
                 # Keep track of max radii in image-space for pruning
-                gaussians.max_radii2D[visibility_filter] = torch.max(gaussians.max_radii2D[visibility_filter], radii[visibility_filter])
-                gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter)
+                gaussians.max_radii2D[visibility_filter] = torch.max(gaussians.max_radii2D[visibility_filter], radii[visibility_filter]) #更新最大半径
+                gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter) #更新高斯点的位置和半径
 
-                if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
-                    size_threshold = 20 if iteration > opt.opacity_reset_interval else None
-                    gaussians.densify_and_prune(opt.densify_grad_threshold, 0.005, scene.cameras_extent, size_threshold)
+                if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0: #每隔densification_interval次迭代进行一次稠密化
+                    size_threshold = 20 if iteration > opt.opacity_reset_interval else None #稠密化的阈值
+                    gaussians.densify_and_prune(opt.densify_grad_threshold, 0.005, scene.cameras_extent, size_threshold) #稠密化和剪枝
 
-                if iteration % opt.opacity_reset_interval == 0 or (dataset.white_background and iteration == opt.densify_from_iter):
+                if iteration % opt.opacity_reset_interval == 0 or (dataset.white_background and iteration == opt.densify_from_iter): #每隔opacity_reset_interval次迭代重置透明度
                     gaussians.reset_opacity()
 
             # Optimizer step
             if iteration < opt.iterations:
-                gaussians.optimizer.step()
-                gaussians.optimizer.zero_grad(set_to_none = True)
+                gaussians.optimizer.step()  #更新高斯点的位置和半径
+                gaussians.optimizer.zero_grad(set_to_none = True) #清空梯度
                 if gaussians.appearance_optim is not None:
                     gaussians.appearance_optim.step()
                     gaussians.appearance_optim.zero_grad(set_to_none=True)
@@ -227,26 +228,12 @@ if __name__ == "__main__":
     parser.add_argument('--port', type=int, default=6009)
     parser.add_argument('--debug_from', type=int, default=-1)
     parser.add_argument('--detect_anomaly', action='store_true', default=False)
-    parser.add_argument("--test_iterations", nargs="+", type=int, default=[2_000,
-                                                                           4_000,
-                                                                           6_000,
-                                                                           8_000,
+    parser.add_argument("--test_iterations", nargs="+", type=int, default=[
                                                                            10_000,
-                                                                           12_000,
-                                                                           14_000,
-                                                                           16_000,
-                                                                           18_000,
                                                                            20_000])
     
-    parser.add_argument("--save_iterations", nargs="+", type=int, default=[2_000, 
-                                                                           4_000,
-                                                                           6_000,
-                                                                           8_000,
+    parser.add_argument("--save_iterations", nargs="+", type=int, default=[
                                                                            10_000,
-                                                                           12_000,
-                                                                           14_000,
-                                                                           16_000,
-                                                                           18_000,
                                                                            20_000])
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument("--checkpoint_iterations", nargs="+", type=int, default=[])

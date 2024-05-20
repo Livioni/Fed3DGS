@@ -49,7 +49,7 @@ def distillation(global_model: GaussianModel,
     with torch.no_grad():
         # rendering target images from local model
         for i in range(len(viewmats)):
-            rgb_l = rendering(local_model, img_height[i], img_width[i], fovx[i], fovy[i], viewmats[i], bg_color)[0]
+            rgb_l = rendering(local_model, img_height[i], img_width[i], fovx[i], fovy[i], viewmats[i], bg_color)[0] #渲染local model的图片
             target_images.append(rgb_l)
         # rendering target images from global model
         target_camera_indices = sample_cameras(local_model, global_metadatas, max_cameras=len(target_images), far=far)
@@ -74,8 +74,8 @@ def distillation(global_model: GaussianModel,
         D, _ = faiss_knn(index, xyz_l_np, 2)
         eps = float(np.median(D[:, 1]))
         mask = knn_filtering(index, xyz_g.cpu().numpy(), eps)
-        opacity_g[mask] = reset_opacity(opacity_g[mask], global_model.opacity_activation, global_model.inverse_opacity_activation, max_opacity)
-        opacity_l = reset_opacity(opacity_l, local_model.opacity_activation, local_model.inverse_opacity_activation, max_opacity)
+        opacity_g[mask] = reset_opacity(opacity_g[mask], global_model.opacity_activation, global_model.inverse_opacity_activation, max_opacity) #将global model中可见的点的透明度重置
+        opacity_l = reset_opacity(opacity_l, local_model.opacity_activation, local_model.inverse_opacity_activation, max_opacity) #将local model中的透明度重置
         # merge local and global model by concatenation
         new_params = dict(xyz=torch.cat([xyz_g, xyz_l]),
                           rotation=torch.cat([rot_g, rot_l]),
@@ -138,11 +138,12 @@ def update_model(global_params: Dict[str, Any],
                  resolution_scale: int=1,
                  far: int=100):
     # get camera intrinsic
-    image_height, image_width, fovx, fovy, viewmats = get_cameras_from_metadata(client_metadatas)
+    image_height, image_width, fovx, fovy, viewmats = get_cameras_from_metadata(client_metadatas) #获取client model的相机参数
+    # fovx: 水平视场角 fovy: 垂直视场角 viewmats: 相机视图矩阵
     image_height = list(map(lambda x: x //resolution_scale, image_height))
     image_width = list(map(lambda x: x //resolution_scale, image_width))
     # get visible Gaussians
-    vis_msk = compute_visible_point_mask(global_params['xyz'], client_metadatas, 'cpu')
+    vis_msk = compute_visible_point_mask(global_params['xyz'], client_metadatas, 'cpu') #在client model的视角下，global model中的点是否可见
     logger.info(f"#global model's points: {len(global_params['xyz'])} ({vis_msk.sum()} visible points)")
     logger.info(f"#local model's points: {len(client_model._xyz.data)}")
     xyz_g = global_params['xyz']
@@ -150,11 +151,11 @@ def update_model(global_params: Dict[str, Any],
     scale_g = global_params['scaling']
     opacity_g = global_params['opacity']
     sh_g = torch.cat([global_params['features_dc'], global_params['features_rest']], 1)
-    vis_xyz_g = xyz_g[vis_msk]
-    vis_rot_g = rot_g[vis_msk]
-    vis_scale_g = scale_g[vis_msk]
-    vis_opacity_g = opacity_g[vis_msk]
-    vis_sh_g = sh_g[vis_msk]
+    vis_xyz_g = xyz_g[vis_msk] #global model中可见的点
+    vis_rot_g = rot_g[vis_msk] #global model中可见的点的旋转矩阵
+    vis_scale_g = scale_g[vis_msk] #global model中可见的点的缩放矩阵
+    vis_opacity_g = opacity_g[vis_msk] #global model中可见的点的透明度
+    vis_sh_g = sh_g[vis_msk] #global model中可见的点的球谐函数
     tmp_global_model = GaussianModel(client_model.max_sh_degree)
     logger.info(f'#points before model update: {len(vis_xyz_g)}')
     new_params = dict(xyz=vis_xyz_g,
@@ -221,11 +222,11 @@ def _update_model(global_params, client_model_index, metadatas, client_metadatas
     client_model_file = os.path.join(args.model_dir,
                                      client_model_index,
                                      'point_cloud/iteration_' + str(load_iter) + '/point_cloud.ply')
-    client_model = GaussianModel(args.sh_degree)
-    client_model.load_ply(client_model_file)
+    client_model = GaussianModel(args.sh_degree) #初始化一个client model
+    client_model.load_ply(client_model_file) #加载client model
     logger.info(f'update model with {client_model_index}-th clients')
-    g_sub_l = np.setdiff1d(global_model_cam_list, intersection)
-    global_model_camera_meta = [metadatas[fname.split('.')[0]] for fname in g_sub_l]
+    g_sub_l = np.setdiff1d(global_model_cam_list, intersection) #取global model和client model的差集,在global model中但不在client model中的图片
+    global_model_camera_meta = [metadatas[fname.split('.')[0]] for fname in g_sub_l] #取出g_sub_l中的图片对应的metadata
     global_params = update_model(global_params, client_model, client_metadatas,
                                  global_model_camera_meta, args.min_opacity, args.lr_opacity,
                                  args.lr_mlp, args.wd_mlp, args.lr_hash, args.lr_avec,
@@ -271,27 +272,28 @@ def main(args):
     metadatas = {}
     for fname in tqdm(metadata_files):
         file_idx = fname.split('.')[0]
-        metadatas[file_idx] = torch.load(os.path.join(metadata_dir, fname))
+        metadatas[file_idx] = torch.load(os.path.join(metadata_dir, fname)) #一个字典，对应图片index和对应的metadata
     # load image indices in clients data
     logger.info('load image lists')
-    index_files = sorted(os.listdir(args.index_dir))
+    index_files = sorted(os.listdir(args.index_dir)) #列出了index文件夹下的所有图片索引txt
     if args.shuffle:
         index_files = list(np.random.permutation(index_files))
     if args.n_clients > 0:
         index_files = index_files[:args.n_clients]
     image_lists = [list(np.loadtxt(os.path.join(args.index_dir, fname), dtype=str))
-                   for fname in index_files if '.txt' in fname]
+                   for fname in index_files if '.txt' in fname] 
     # load a 0-th local model as a global model
     logger.info('initialize global model')
-    seed_model_index = index_files.pop(0).split('.')[0]
-    load_iter = args.load_iteration
+    seed_model_index = index_files.pop(0).split('.')[0] #取出第一个client的index 即00000
+    load_iter = args.load_iteration #需要加载的迭代次数 默认只有一个200000
     seed_model_file = os.path.join(args.model_dir,
                                    seed_model_index,
                                    'point_cloud/iteration_' + str(load_iter) + '/point_cloud.ply')
-    global_model = GaussianModel(args.sh_degree)
-    global_model.load_ply(seed_model_file)
+    global_model = GaussianModel(args.sh_degree) #初始化一个global model
+    global_model.load_ply(seed_model_file) #加载第一个client的模型
     # get model params
-    xyz_g, rot_g, scale_g, opacity_g, sh_g = get_model_params(global_model, preact=True, device='cpu')
+    xyz_g, rot_g, scale_g, opacity_g, sh_g = get_model_params(global_model, preact=True, device='cpu') #获取global model的参数
+    # xyz_g: 3D坐标 rot_g: 旋转矩阵 scale_g: 缩放矩阵 opacity_g: 透明度 sh_g: 球谐函数
     global_params = dict(xyz=xyz_g,
                         rotation=rot_g,
                         scaling=scale_g,
@@ -309,7 +311,7 @@ def main(args):
     bg_color = torch.Tensor([1., 1., 1.]).cuda() if args.white_bg else torch.Tensor([0., 0., 0.]).cuda()
     n_added_client = 1
     for client_idx, client_cam_list in zip(index_files, image_lists):
-        intersection = np.intersect1d(global_model_cam_list, client_cam_list)
+        intersection = np.intersect1d(global_model_cam_list, client_cam_list) #取global model和client model的交集
         # client selection
         if len(intersection) < args.overlap_img_threshold:
             client_buffer.append([client_idx, client_cam_list])
