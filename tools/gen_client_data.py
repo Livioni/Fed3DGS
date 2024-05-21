@@ -103,11 +103,11 @@ if __name__=='__main__':
                         type=int,
                         help='number of images for clients')
     parser.add_argument('--n-data-min', '-min',
-                        default=100,
+                        default=125,
                         type=int,
                         help='minimum number of clients data')
     parser.add_argument('--n-data-max', '-max',
-                        default=150,
+                        default=175,
                         type=int,
                         help='maximum number of clients data')
     args = parser.parse_args()
@@ -128,9 +128,15 @@ if __name__=='__main__':
     xyz_coord = c2ws[:, :3, -1] # (#cameras, 3)
     labels, centers = perform_kmeans(xyz_coord, args.n_clients)
     cluster_counts = count_points_in_clusters(labels, args.n_clients)
-    n_data = cluster_counts + np.random.randint(args.n_data_max - cluster_counts)
+    sample_camera_n = []
+    for data in cluster_counts:
+        if data <= args.n_data_min:
+            sample_camera_n.append(data + np.random.randint(args.n_data_min - data, args.n_data_max - data))
+        else:
+            sample_camera_n.append(data)
+            
     for i in range(args.n_clients):
         camera_centers = centers[i]
-        indices = gen_client_data(c2ws, n_data[i], camera_centers)
+        indices = gen_client_data(c2ws, sample_camera_n[i], camera_centers)
         training_image_names = [fnames[idx] for idx in indices]
         np.savetxt(os.path.join(args.output_dir, str(i).zfill(5) + '.txt'), training_image_names, fmt="%s")
