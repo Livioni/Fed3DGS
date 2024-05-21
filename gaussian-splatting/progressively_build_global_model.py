@@ -229,7 +229,7 @@ def _update_model(global_params, client_model_index, metadatas, client_metadatas
                                      'point_cloud/iteration_' + str(load_iter) + '/point_cloud.ply')
     client_model = GaussianModel(args.sh_degree) #初始化一个client model
     client_model.load_ply(client_model_file) #加载client model
-    logger.info(f'update model with {client_model_index}-th clients')
+    logger.info(f'update model with {client_model_index}-th clients at {load_iter}-th iteration')
     g_sub_l = np.setdiff1d(global_model_cam_list, intersection) #取global model和client model的差集,在global model中但不在client model中的图片
     global_model_camera_meta = [metadatas[fname.split('.')[0]] for fname in g_sub_l] #取出g_sub_l中的图片对应的metadata
     global_params = update_model(global_params, client_model, client_metadatas,
@@ -269,7 +269,7 @@ def check_buffer(global_params,
     return global_params, tmp_client_buffer, global_model_cam_list, updated, n_added_client
 
 
-def main(args):
+def main(args, update_epoch):
     metadata_dir = os.path.join(args.dataset_dir, 'train/metadata')
     logger.info('load metadata')
     # load metadata including camera intrinsic and extrinsic
@@ -289,8 +289,9 @@ def main(args):
                    for fname in index_files if '.txt' in fname] 
     # load a 0-th local model as a global model
     logger.info('initialize global model')
-    seed_model_index = index_files.pop(0).split('.')[0] #取出第一个client的index 即00000
-    load_iter = args.load_iteration #需要加载的迭代次数 默认只有一个200000
+    # seed_model_index = index_files.pop(0).split('.')[0] #取出第一个client的index 即00000
+    seed_model_index = index_files[0].split('.')[0]
+    load_iter = update_epoch[0] #初始化第一个epoch
     seed_model_file = os.path.join(args.model_dir,
                                    seed_model_index,
                                    'point_cloud/iteration_' + str(load_iter) + '/point_cloud.ply')
@@ -309,39 +310,43 @@ def main(args):
                         app_pos_emb=global_model.pos_emb.state_dict())
     del global_model
     # global model's camera list
-    global_model_cam_list = image_lists.pop(0)
+    global_model_cam_list = image_lists[0]
     # placeholder
     client_buffer = []
     # set background color
     bg_color = torch.Tensor([1., 1., 1.]).cuda() if args.white_bg else torch.Tensor([0., 0., 0.]).cuda()
     n_added_client = 1
-    for client_idx, client_cam_list in zip(index_files, image_lists):
-        intersection = np.intersect1d(global_model_cam_list, client_cam_list) #取global model和client model的交集
-        # client selection
-        if len(intersection) < args.overlap_img_threshold:
-            client_buffer.append([client_idx, client_cam_list])
-            continue
-        logger.info('---')
-        # load a local model
-        client_model_index = client_idx.split('.')[0]
-        client_metadatas = [metadatas[fname.split('.')[0]] for fname in client_cam_list]
-        global_params = _update_model(global_params, client_model_index, metadatas, client_metadatas,
-                                      global_model_cam_list, intersection, bg_color, load_iter, args)
-        # update global model's camera list
-        global_model_cam_list = np.union1d(global_model_cam_list, client_cam_list)
-        n_added_client += 1
-        # save model
-        if (n_added_client % args.save_freq) == 0:
-            torch.save(global_params, os.path.join(args.output_dir, f'global_model_{n_added_client}clients.pth'))
-        # aggregate buffered models
-        while True:
-            global_params, client_buffer, global_model_cam_list, updated, n_added_client = check_buffer(global_params, client_buffer, metadatas,
-                                                                                                        load_iter, bg_color, global_model_cam_list,
-                                                                                                        n_added_client, args)
-            if not updated:
-                break
+    
+    for global_idx, load_iter in enumerate(update_epoch):
+        for client_idx, client_cam_list in zip(index_files, image_lists):
+            if global_idx == 0 and client_idx == index_files[0]:
+                continue
+            intersection = np.intersect1d(global_model_cam_list, client_cam_list) #取global model和client model的交集
+            # client selection
+            if len(intersection) < args.overlap_img_threshold:
+                client_buffer.append([client_idx, client_cam_list])
+                continue
+            logger.info('---')
+            # load a local model
+            client_model_index = client_idx.split('.')[0]
+            client_metadatas = [metadatas[fname.split('.')[0]] for fname in client_cam_list]
+            global_params = _update_model(global_params, client_model_index, metadatas, client_metadatas,
+                                        global_model_cam_list, intersection, bg_color, load_iter, args)
+            # update global model's camera list
+            global_model_cam_list = np.union1d(global_model_cam_list, client_cam_list)
+            n_added_client += 1
+            # save model
+            if (n_added_client % args.save_freq) == 0:
+                torch.save(global_params, os.path.join(args.output_dir, f'global_model_{n_added_client}clients.pth'))
+            # aggregate buffered models
+            while True:
+                global_params, client_buffer, global_model_cam_list, updated, n_added_client = check_buffer(global_params, client_buffer, metadatas,
+                                                                                                            load_iter, bg_color, global_model_cam_list,
+                                                                                                            n_added_client, args)
+                if not updated:
+                    break
 
-    torch.save(global_params, os.path.join(args.output_dir, f'global_model.pth'))
+        torch.save(global_params, os.path.join(args.output_dir, f'global_model_epoch{load_iter}.pth'))
 
 
 if __name__=='__main__':
@@ -362,7 +367,7 @@ if __name__=='__main__':
                         help='if True, randomly aggregating client models')
     ### model args
     parser.add_argument('--sh-degree', default=3, type=int)
-    parser.add_argument('--load-iteration', '-liter', default='20000', type=str)
+    # parser.add_argument('--load-iteration', '-liter', default='20000', type=str)
     parser.add_argument('--white-bg', '-w', action='store_true')
     ### alignment args
     parser.add_argument('--lr', default=1e-3, type=float,
@@ -401,5 +406,7 @@ if __name__=='__main__':
     f_handler.setFormatter(plain_formatter)
     f_handler.setLevel(logging.INFO)
     logger.addHandler(f_handler)
+    # updata_epoch = ['2000', '4000', '6000', '8000', '10000', '12000', '14000', '16000', '18000', '20000']
+    updata_epoch = ['200', '400', '600', '800', '1000', '1200', '1400', '1600', '1800', '2000']
 
-    main(args)
+    main(args, updata_epoch)
