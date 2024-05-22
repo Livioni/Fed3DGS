@@ -1,5 +1,6 @@
 datasets
 outputs
 eval
+checkpoints
 *.pyc
 .vscode

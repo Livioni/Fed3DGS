@@ -87,7 +87,7 @@ def render(viewpoint_camera,
             colors_precomp = torch.clamp_min(sh2rgb + 0.5, 0.0)
         else:
             shs = pc.get_features
-            if data_idx >= 0:
+            if pc.use_img_feats and data_idx >= 0:
                shs = shs + pc.get_image_features(data_idx)
     else:
         colors_precomp = override_color

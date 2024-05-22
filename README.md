@@ -8,6 +8,7 @@
 - 2024.05.20-1 注解代码1
 - 2024.05.21-1 尝试15个clients，没有发现明显规律
 - 2024.05.21-2 重新划分了20个clients，并且有大量重叠图片; 同步至中关村
+- 2024.05.22-1 修复性能损失。
 
 
 export CUDA_VISIBLE_DEVICES=1 
@@ -48,10 +49,10 @@ bash scripts/device_1_training.sh 10 19 outputs/20clients/rubble-pixsfm_colmap_r
 ## Single Scene Training
 
 ``` bash
-python gaussian-splatting/train.py -s outputs/rubble-pixsfm_colmap_results/00004 \
+python gaussian-splatting/train.py -s outputs/15clients/rubble-pixsfm_colmap_results/00007 \
                                    -i datasets/rubble-pixsfm/train/rgbs \
                                    -w \
-                                   -m outputs/rubble-pixsfm_local_models/00004
+                                   -m outputs/test/00007
 ```
 
 ## Build Global Model
@@ -78,5 +79,16 @@ python gaussian-splatting/progressively_build_global_model.py \
 
 ## Evaluation
 ```bash
-python gaussian-splatting/eval.py -w -o eval/kmeans-10-20_000 -g outputs/global_model/kmeans-10-20_000/global_model_epoch20000.pth -data datasets/rubble-pixsfm
+python gaussian-splatting/eval.py -w -o eval -g check_points/global-models/rubble/global_model.pth -data datasets/rubble-pixsfm --sh-degree 3
+```
+
+## RealFed
+```bash
+python gaussian-splatting/realfed.py -s outputs/20clients/rubble-pixsfm_colmap_results \
+                                     -i datasets/rubble-pixsfm/train/rgbs \
+                                     -w --client 20 \
+                                     -m outputs/20clients/real_fed_models \
+                                     -o outputs/20clients/real_fed_global_models \
+                                     -data datasets/rubble-pixsfm
+                                    
 ```
