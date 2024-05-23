@@ -354,6 +354,26 @@ class GaussianModel:
         optimizable_tensors = self.replace_tensor_to_optimizer(opacities_new, "opacity")
         self._opacity = optimizable_tensors["opacity"]
 
+    def set_rotation(self, rotation):
+        self._rotation = nn.Parameter(rotation.requires_grad_(True))
+    
+    def set_opacity(self, opacity):
+        self._opacity = nn.Parameter(opacity.requires_grad_(True))
+    
+    def set_mlp(self, app_mlp):
+        self.mlp.load_state_dict(app_mlp)
+        return
+    
+    def set_pos_emb(self, pos_emb):
+        self.pos_emb.load_state_dict(pos_emb)
+        return
+    
+    def reset_setting(self):
+        self.xyz_gradient_accum = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
+        self.denom = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
+        self.max_radii2D = torch.zeros((self.get_xyz.shape[0]), device="cuda")
+        return
+        
     def load_ply(self, path):
         plydata = PlyData.read(path)
 

@@ -1,0 +1,137 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python 调试程序: 当前文件",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Evaluation",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "gaussian-splatting/eval.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-w", "-o", "eval/fed_4000",
+                "-g", "outputs/20clients/real_fed_global_models/global_model_epoch4000.pth",
+                "-data", "datasets/rubble-pixsfm"
+            ]
+        },
+        {
+            "name": "Map Visualizaiton",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "tools/map_visualization.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-d",
+                "datasets/rubble-pixsfm",
+                "-o",
+                "visualizations/rubble",
+                "-l",
+                "client_image_lists/rubble-pixsfm_kmeans-20"
+            ]
+        },
+        {
+            "name": "Single Local Training",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "gaussian-splatting/train.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-s",
+                "outputs/15clients/rubble-pixsfm_colmap_results/00007",
+                "-i",
+                "datasets/rubble-pixsfm/train/rgbs",
+                "-w",
+                "-m",
+                "outputs/test/00007",
+            ]
+        },
+        {
+            "name": "Real Federated Learning",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "gaussian-splatting/realfed.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-s",
+                "outputs/20clients/rubble-pixsfm_colmap_results",
+                "-i",
+                "datasets/rubble-pixsfm/train/rgbs",
+                "-w",
+                "-m",
+                "outputs/20clients/real_fed_models",
+                "-o",
+                "outputs/20clients/real_fed_global_models",
+                "-data",
+                "datasets/rubble-pixsfm",
+                "--index-dir",
+                "client_image_lists/rubble-pixsfm_kmeans-20",
+                "--model-dir",
+                "outputs/20clients/real_fed_models"
+            ]
+        },
+        {
+            "name": "Kmeans",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "tools/gen_client_data.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-d",
+                "datasets/rubble-pixsfm",
+                "-o",
+                "client_image_lists/rubble-pixsfm_kmeans-20",
+                "--n-clients",
+                "20",
+                "--n-data-max",
+                "175",
+                "--n-data-min",
+                "125"
+            ]
+        },
+        {
+            "name": "Progressively Gobal Training",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "gaussian-splatting/progressively_build_global_model.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-w",
+                "-o",
+                "outputs/global_model",
+                "-m",
+                "outputs/rubble-pixsfm_local_models",
+                "-i",
+                "client_image_lists/rubble-pixsfm_k_means",
+                "-data",
+                "datasets/rubble-pixsfm"
+            ]
+        },
+        {
+            "name": "Gobal Training",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "gaussian-splatting/build_global_model.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-w",
+                "-o",
+                "outputs/global_model",
+                "-m",
+                "outputs/rubble-pixsfm_local_models",
+                "-i",
+                "client_image_lists/rubble-pixsfm_k_means",
+                "-data",
+                "datasets/rubble-pixsfm"
+            ]
+        }
+    ]
+}

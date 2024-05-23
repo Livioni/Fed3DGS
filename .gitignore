@@ -3,4 +3,4 @@ outputs
 eval
 checkpoints
 *.pyc
-.vscode
+# .vscode

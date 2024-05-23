@@ -15,7 +15,7 @@ def calculate_ply_sizes(base_path, iterations):
     return total_size_mb
 
 # 示例使用
-base_path = 'outputs/rubble-pixsfm_local_models'
-iterations = [200,400,600,800,1000,1200,1400,1600,1800,2000]
+base_path = 'outputs/20clients/rubble-pixsfm_local_models'
+iterations = [8000]
 total_size = calculate_ply_sizes(base_path, iterations)
 print(f'Total size of .ply files for iterations {iterations} is {total_size:.2f} MB')

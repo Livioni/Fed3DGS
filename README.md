@@ -9,9 +9,11 @@
 - 2024.05.21-1 尝试15个clients，没有发现明显规律
 - 2024.05.21-2 重新划分了20个clients，并且有大量重叠图片; 同步至中关村
 - 2024.05.22-1 修复性能损失。
+- 2024.05.23-1 完成Real Fed 3DGS
 
 
 export CUDA_VISIBLE_DEVICES=1 
+
 export CUDA_VISIBLE_DEVICES=0
 
 ## Training Local Models:
@@ -59,9 +61,9 @@ python gaussian-splatting/train.py -s outputs/15clients/rubble-pixsfm_colmap_res
 
 ``` bash
 python gaussian-splatting/build_global_model.py \
-                                                -w -o outputs/global_model \
-                                                -m outputs/rubble-pixsfm_local_models  \
-                                                -i client_image_lists/rubble-pixsfm_k_means \
+                                                -w -o outputs/20clients/global_models \
+                                                -m outputs/20clients/rubble-pixsfm_local_models  \
+                                                -i client_image_lists/rubble-pixsfm_kmeans-20 \
                                                 -data datasets/rubble-pixsfm \
                                                 --sh-degree 3
 ```
@@ -70,7 +72,7 @@ python gaussian-splatting/build_global_model.py \
 
 ``` bash
 python gaussian-splatting/progressively_build_global_model.py \
-                                                -w -o outputs/20clients/global_model-10000 \
+                                                -w -o outputs/20clients/global_models/single10_000 \
                                                 -m outputs/20clients/rubble-pixsfm_local_models  \
                                                 -i client_image_lists/rubble-pixsfm_kmeans-20 \
                                                 -data datasets/rubble-pixsfm \
@@ -79,16 +81,17 @@ python gaussian-splatting/progressively_build_global_model.py \
 
 ## Evaluation
 ```bash
-python gaussian-splatting/eval.py -w -o eval -g check_points/global-models/rubble/global_model.pth -data datasets/rubble-pixsfm --sh-degree 3
+python gaussian-splatting/eval.py -w -o eval/fed_6000 -g outputs/20clients/real_fed_global_models/global_model_epoch6000.pth -data datasets/rubble-pixsfm --sh-degree 3
 ```
 
 ## RealFed
 ```bash
-python gaussian-splatting/realfed.py -s outputs/20clients/rubble-pixsfm_colmap_results \
-                                     -i datasets/rubble-pixsfm/train/rgbs \
-                                     -w --client 20 \
-                                     -m outputs/20clients/real_fed_models \
-                                     -o outputs/20clients/real_fed_global_models \
-                                     -data datasets/rubble-pixsfm
-                                    
+python gaussian-splatting/realfed.py  \
+-s outputs/20clients/rubble-pixsfm_colmap_results \
+-i datasets/rubble-pixsfm/train/rgbs \
+-w -m outputs/20clients/real_fed_models \
+-o outputs/20clients/real_fed_global_models \
+-data datasets/rubble-pixsfm \
+--index-dir client_image_lists/rubble-pixsfm_kmeans-20 \
+--model-dir outputs/20clients/real_fed_models 
 ```
