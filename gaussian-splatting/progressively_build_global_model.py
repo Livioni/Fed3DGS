@@ -407,6 +407,6 @@ if __name__=='__main__':
     f_handler.setLevel(logging.INFO)
     logger.addHandler(f_handler)
     # updata_epoch = ['2000', '4000', '6000', '8000', '10000', '12000', '14000', '16000', '18000', '20000']
-    updata_epoch = ['10000']
+    updata_epoch = ['8000']
 
     main(args, updata_epoch)

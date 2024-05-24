@@ -1,7 +1,6 @@
+## 1Logs
 
-## Logs
-
-- 2024.05.17-0 init 
+- 2024.05.17-0 init
 - 2024.05.17-1 使用Kmeans聚15类划分，并保证所有图片全覆盖，大约相邻范围内有10-40左右的重叠视角
 - 2024.05.17-2 单机双卡训练
 - 2024.05.17-3/4 开始测试15类全覆盖的client的精度
@@ -10,13 +9,14 @@
 - 2024.05.21-2 重新划分了20个clients，并且有大量重叠图片; 同步至中关村
 - 2024.05.22-1 修复性能损失。
 - 2024.05.23-1 完成Real Fed 3DGS
+- 2024.05.24-0 同步
 
-
-export CUDA_VISIBLE_DEVICES=1 
+export CUDA_VISIBLE_DEVICES=1
 
 export CUDA_VISIBLE_DEVICES=0
 
 ## Training Local Models:
+
 ```bash
 python tools/gen_client_data.py -d datasets/rubble-pixsfm \
                                 -o datasets/rubble-pixsfm_image_lists \
@@ -26,22 +26,22 @@ python tools/gen_client_data.py -d datasets/rubble-pixsfm \
 ## Distrubuted Training
 
 ### Colmap Pre-process
-``` bash
+
+```bash
 bash scripts/client_training.sh 10 19 outputs/20clients/rubble-pixsfm_colmap_results \
                                      datasets/rubble-pixsfm \
                                      client_image_lists/rubble-pixsfm_kmeans-20 \
                                      outputs/rubble-pixsfm_local_models
 ```
 
-
-``` bash
+```bash
 bash scripts/device_0_training.sh 0 9 outputs/20clients/rubble-pixsfm_colmap_results \
                                       datasets/rubble-pixsfm \
                                       client_image_lists/rubble-pixsfm_kmeans-20 \
                                       outputs/20clients/rubble-pixsfm_local_models
 ```
 
-``` bash
+```bash
 bash scripts/device_1_training.sh 10 19 outputs/20clients/rubble-pixsfm_colmap_results \
                                         datasets/rubble-pixsfm \
                                         client_image_lists/rubble-pixsfm_kmeans-20 \
@@ -50,7 +50,7 @@ bash scripts/device_1_training.sh 10 19 outputs/20clients/rubble-pixsfm_colmap_r
 
 ## Single Scene Training
 
-``` bash
+```bash
 python gaussian-splatting/train.py -s outputs/15clients/rubble-pixsfm_colmap_results/00007 \
                                    -i datasets/rubble-pixsfm/train/rgbs \
                                    -w \
@@ -59,7 +59,7 @@ python gaussian-splatting/train.py -s outputs/15clients/rubble-pixsfm_colmap_res
 
 ## Build Global Model
 
-``` bash
+```bash
 python gaussian-splatting/build_global_model.py \
                                                 -w -o outputs/20clients/global_models \
                                                 -m outputs/20clients/rubble-pixsfm_local_models  \
@@ -70,9 +70,9 @@ python gaussian-splatting/build_global_model.py \
 
 ## Progressively_Build
 
-``` bash
+```bash
 python gaussian-splatting/progressively_build_global_model.py \
-                                                -w -o outputs/20clients/global_models/single10_000 \
+                                                -w -o outputs/20clients/global_models/single4_000 \
                                                 -m outputs/20clients/rubble-pixsfm_local_models  \
                                                 -i client_image_lists/rubble-pixsfm_kmeans-20 \
                                                 -data datasets/rubble-pixsfm \
@@ -80,18 +80,20 @@ python gaussian-splatting/progressively_build_global_model.py \
 ```
 
 ## Evaluation
+
 ```bash
-python gaussian-splatting/eval.py -w -o eval/fed_6000 -g outputs/20clients/real_fed_global_models/global_model_epoch6000.pth -data datasets/rubble-pixsfm --sh-degree 3
+python gaussian-splatting/eval.py -w -o eval/single_8000 -g outputs/20clients/global_models/single8_000/global_model_epoch4000.pth -data datasets/rubble-pixsfm --sh-degree 3
 ```
 
 ## RealFed
+
 ```bash
 python gaussian-splatting/realfed.py  \
 -s outputs/20clients/rubble-pixsfm_colmap_results \
 -i datasets/rubble-pixsfm/train/rgbs \
--w -m outputs/20clients/real_fed_models \
--o outputs/20clients/real_fed_global_models \
+-w -m outputs/20clients/real_fed_models_120 \
+-o outputs/20clients/real_fed_global_models_120 \
 -data datasets/rubble-pixsfm \
 --index-dir client_image_lists/rubble-pixsfm_kmeans-20 \
---model-dir outputs/20clients/real_fed_models 
+--model-dir outputs/20clients/real_fed_models_120 
 ```

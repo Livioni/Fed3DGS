@@ -247,13 +247,15 @@ def aggregate_global_model(args, load_iter):
         n_added_client += 1
         
         # save model
-        if (n_added_client % args.save_freq) == 0:
-            torch.save(global_params, os.path.join(args.output_dir, f'chkpnt_{n_added_client}_updated.pth'))
-            
-        # save local model
-        torch.save(local_params, os.path.join(args.model_dir, client_model_index, f'chkpnt_{load_iter}_updated.pth'))
-        if client_idx == '00001.txt':
-            torch.save(client0_params, os.path.join(args.model_dir, '00000', f'chkpnt_{load_iter}_updated.pth'))
+        if load_iter != 10000:
+            if (n_added_client % args.save_freq) == 0:
+                torch.save(global_params, os.path.join(args.output_dir, f'chkpnt_{n_added_client}_updated.pth'))
+                
+        if load_iter != 10000:
+            # save local model
+            torch.save(local_params, os.path.join(args.model_dir, client_model_index, f'chkpnt_{load_iter}_updated.pth'))
+            if client_idx == '00001.txt':
+                torch.save(client0_params, os.path.join(args.model_dir, '00000', f'chkpnt_{load_iter}_updated.pth'))
             
         # aggregate buffered models
         while True:
@@ -264,6 +266,13 @@ def aggregate_global_model(args, load_iter):
                 break
 
     print("Save global model at {} iteration".format(load_iter))
+    if not os.path.exists(args.output_dir):
+        try:
+            os.makedirs(args.output_dir)
+            print(f"Created directory: {args.output_dir}")
+        except Exception as e:
+            print(f"Error creating directory {args.output_dir}: {e}")
+        
     torch.save(global_params, os.path.join(args.output_dir, f'global_model_epoch{load_iter}.pth'))
         
     return
@@ -499,6 +508,21 @@ def parallel_local_training(gpu_id, client_index, lp_args, op_args, pp_args, tes
     training(lp_args, op_args, pp_args, test_iterations, save_iterations, checkpoint_iterations, start_checkpoint_path, local_model_checkpoint_path, logger)
     logger.info("Finishing process")
 
+def delete_specific_pth_files(directory, filename):
+    # Walk through all directories and subdirectories
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            # Check if the file matches the specific filename
+            if file == filename:
+                # Construct the full file path
+                file_path = os.path.join(root, file)
+                try:
+                    # Remove the file
+                    os.remove(file_path)
+                    print(f"Deleted: {file_path}")
+                except Exception as e:
+                    print(f"Error deleting {file_path}: {e}")
+
 def setup_args():
     # Set up command line argument parser
     parser = argparse.ArgumentParser(description="Training script parameters")
@@ -530,7 +554,7 @@ def setup_args():
     parser.add_argument('--sh-degree', default=3, type=int)
 
     # Alignment args
-    parser.add_argument('--lr', default=1e-3, type=float,
+    parser.add_argument('-lr', default=1e-3, type=float,
                         help='Learning rate for alignment')
     parser.add_argument('--overlap-img-threshold', '-oth', default=0, type=int)
 
@@ -575,10 +599,10 @@ if __name__ == "__main__":
     trainin_round = args.clients // cuda_devices
     test_iterations = list(range(100, 10001, 200))
 
-    aggregate_iterations = [4000, 6000, 8000, 10000]
-    save_iteration_pools = [4000, 6000, 8000, 10000]
-    checkpoint_iteration_pools = [4000, 6000, 8000, 10000]
-    start_checkpoint_pools = [2000, 4000, 6000, 8000]
+    aggregate_iterations = [4000, 8000, 12000, 16000, 20000]
+    save_iteration_pools = [4000, 8000, 12000, 16000, 20000]
+    checkpoint_iteration_pools = [4000, 8000, 12000, 16000, 20000]
+    start_checkpoint_pools = [None, 4000, 8000, 12000, 16000]
     
     for epoch in range(len(aggregate_iterations)):
         print(f"Start training epoch {epoch}")
@@ -586,7 +610,7 @@ if __name__ == "__main__":
         checkpoint_iterations = checkpoint_iteration_pools[epoch] # 用于local model 保存checkpoint .pth
         start_checkpoint = start_checkpoint_pools[epoch] # 用于 local model 加载checkpoint .pth 开训 
         print(f"Start training local models at {start_checkpoint}, save at {checkpoint_iterations}, end at {save_iterations}")
-
+        
         for i in range(trainin_round):
             client_index_1 = i
             client_index_2 = i + trainin_round
@@ -617,6 +641,13 @@ if __name__ == "__main__":
         print("Start to aggregate the local models")
         aggregate_global_model(args, save_iterations)
         torch.cuda.empty_cache()
+        # Specify the directory you want to start the search from
+        directory_to_search = args.model_dir
+        # Specify the filename you want to delete
+        local_model_pth = f"chkpnt{start_checkpoint}.pth"
+        updated_model_pth = f"chkpnt_{start_checkpoint}_updated.pth"
+        delete_specific_pth_files(directory_to_search, local_model_pth)
+        delete_specific_pth_files(directory_to_search, updated_model_pth)
         
                 
             

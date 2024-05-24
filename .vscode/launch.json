@@ -67,15 +67,15 @@
                 "datasets/rubble-pixsfm/train/rgbs",
                 "-w",
                 "-m",
-                "outputs/20clients/real_fed_models",
+                "outputs/20clients/real_fed_models_120",
                 "-o",
-                "outputs/20clients/real_fed_global_models",
+                "outputs/20clients/real_fed_global_models_120",
                 "-data",
                 "datasets/rubble-pixsfm",
                 "--index-dir",
                 "client_image_lists/rubble-pixsfm_kmeans-20",
                 "--model-dir",
-                "outputs/20clients/real_fed_models"
+                "outputs/20clients/real_fed_models_120"
             ]
         },
         {
