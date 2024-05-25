@@ -2,6 +2,7 @@
 import os
 import sys
 import uuid
+import json
 from random import randint
 from PIL import Image
 import multiprocessing as mp
@@ -19,6 +20,9 @@ from utils.loss_utils import l1_loss, ssim
 from gaussian_renderer import render
 from scene import Scene, GaussianModel
 from utils.general_utils import safe_state, PILtoTorch
+from torchvision.utils import save_image
+import matplotlib.pyplot as plt
+
 try:
     from torch.utils.tensorboard import SummaryWriter
     TENSORBOARD_FOUND = True
@@ -29,6 +33,7 @@ from progressively_build_global_model import check_buffer, get_model_params, dis
 from utils.model_update_utils import (get_model_params,
                                       compute_visible_point_mask,
                                       get_cameras_from_metadata,)    
+from eval import evaluation
 
 def update_model(client_model_index : str,
                  global_params: Dict[str, Any],
@@ -247,11 +252,11 @@ def aggregate_global_model(args, load_iter):
         n_added_client += 1
         
         # save model
-        if load_iter != 10000:
+        if load_iter != args.iterations:
             if (n_added_client % args.save_freq) == 0:
                 torch.save(global_params, os.path.join(args.output_dir, f'chkpnt_{n_added_client}_updated.pth'))
                 
-        if load_iter != 10000:
+        if load_iter != args.iterations:
             # save local model
             torch.save(local_params, os.path.join(args.model_dir, client_model_index, f'chkpnt_{load_iter}_updated.pth'))
             if client_idx == '00001.txt':
@@ -542,6 +547,9 @@ def setup_args():
                         help='/path/to/image-list-file-dir')
     parser.add_argument('--model-dir', required=True, type=str,
                         help='/path/to/client-model-dir')
+    parser.add_argument('--eval-out', required=True, type=str,
+                        help='/path/to/eval-dir')
+
     # Global training params
     parser.add_argument('--output-dir', '-o', default='./', type=str,
                         help='/path to output dir')
@@ -574,6 +582,7 @@ def setup_args():
     parser.add_argument('--seed', default=1, type=int, help='Random seed')
     parser.add_argument('--save-freq', default=100, type=int)
     parser.add_argument('--far', default=100, type=int)
+    parser.add_argument('--n-iter', default=100, type=int)
 
     return parser.parse_args(), lp, op, pp
 
@@ -599,10 +608,10 @@ if __name__ == "__main__":
     trainin_round = args.clients // cuda_devices
     test_iterations = list(range(100, 10001, 200))
 
-    aggregate_iterations = [4000, 8000, 12000, 16000, 20000]
-    save_iteration_pools = [4000, 8000, 12000, 16000, 20000]
-    checkpoint_iteration_pools = [4000, 8000, 12000, 16000, 20000]
-    start_checkpoint_pools = [None, 4000, 8000, 12000, 16000]
+    aggregate_iterations = [12000, 14000, 16000, 18000, 20000]
+    save_iteration_pools = [12000, 14000, 16000, 18000, 20000]
+    checkpoint_iteration_pools = [12000, 14000, 16000, 18000, 20000]
+    start_checkpoint_pools = [10000, 12000, 14000, 16000, 18000]
     
     for epoch in range(len(aggregate_iterations)):
         print(f"Start training epoch {epoch}")
@@ -610,10 +619,10 @@ if __name__ == "__main__":
         checkpoint_iterations = checkpoint_iteration_pools[epoch] # 用于local model 保存checkpoint .pth
         start_checkpoint = start_checkpoint_pools[epoch] # 用于 local model 加载checkpoint .pth 开训 
         print(f"Start training local models at {start_checkpoint}, save at {checkpoint_iterations}, end at {save_iterations}")
-        
+
         for i in range(trainin_round):
             client_index_1 = i
-            client_index_2 = i + trainin_round
+            client_index_2 = trainin_round + i
             
             # Debug
             # parallel_local_training(0, client_index_1, lp.extract(args), op.extract(args), pp.extract(args),
@@ -626,28 +635,79 @@ if __name__ == "__main__":
             p2 = Process(target=parallel_local_training, name = f"Client_{client_index_2}",
                         args=(1, client_index_2, lp.extract(args), op.extract(args), pp.extract(args), 
                         test_iterations, save_iterations, checkpoint_iterations, start_checkpoint))
+                                
             p1.start()
             p2.start()
+
             processes.append(p1)
             processes.append(p2)
             
             for p in processes:
                 p.join()
-            
-            print("local client {} and {} training finished".format(client_index_1, client_index_2))
-            
+                    
         torch.cuda.empty_cache()
-            
-        print("Start to aggregate the local models")
-        aggregate_global_model(args, save_iterations)
-        torch.cuda.empty_cache()
-        # Specify the directory you want to start the search from
-        directory_to_search = args.model_dir
+        print("local client {} and {} training finished".format(client_index_1, client_index_2))
+        
         # Specify the filename you want to delete
         local_model_pth = f"chkpnt{start_checkpoint}.pth"
         updated_model_pth = f"chkpnt_{start_checkpoint}_updated.pth"
-        delete_specific_pth_files(directory_to_search, local_model_pth)
-        delete_specific_pth_files(directory_to_search, updated_model_pth)
+        delete_specific_pth_files(args.model_dir, local_model_pth)
+        delete_specific_pth_files(args.model_dir, updated_model_pth)
+
+        #################################################
+        print("Start to aggregate the local models")
+        aggregate_global_model(args, save_iterations)
+        torch.cuda.empty_cache()
+
+
+        print("Start to evaluate the global model")
+        output_dir = os.path.join(args.eval_out, f"fed_eval_epoch{save_iterations}")
+        os.makedirs(output_dir, exist_ok=True)
+
+        # setup logger
+        logger = logging.getLogger('eval')
+        logger.setLevel(logging.INFO)
+        s_handler = logging.StreamHandler(stream=sys.stdout)
+        plain_formatter = logging.Formatter('[%(asctime)s] %(name)s %(levelname)s: %(message)s', datefmt='%m/%d %H:%M:%S')
+        s_handler.setFormatter(plain_formatter)
+        s_handler.setLevel(logging.INFO)
+        logger.addHandler(s_handler)
+        f_handler = logging.FileHandler(os.path.join(output_dir, 'console.log'))
+        f_handler.setFormatter(plain_formatter)
+        f_handler.setLevel(logging.INFO)
+        logger.addHandler(f_handler)
+
+        global_model_path = os.path.join(args.output_dir, f"global_model_epoch{save_iterations}.pth")
+        logger.info(f'load global model from {global_model_path}')
+        global_params = torch.load(global_model_path)
+        logger.info(f'#Gaussians {len(global_params["xyz"])}')
+        logger.info('load metadata')
+        # set background color
+        bg_color = torch.Tensor([1., 1., 1.]).cuda() if args.white_background else torch.Tensor([0., 0.,0.]).cuda()
+        # evaluation
+        val_image_lists = sorted(os.listdir(os.path.join(args.dataset_dir, 'val/rgbs')))
+        val_metadatas = [torch.load(os.path.join(args.dataset_dir, 'val/metadata', f.split('.')[0]+'.pt')) for f in val_image_lists]
+        images, depths, psnr, ssim, lpips = evaluation(global_params,
+                                                        args.dataset_dir,
+                                                        val_image_lists,
+                                                        val_metadatas,
+                                                        bg_color,
+                                                        args.sh_degree,
+                                                        args.n_iter,
+                                                        args.lr,
+                                                        args.resolution)
+
+        with open(os.path.join(output_dir, 'metrics.json'), 'w') as f:
+            json.dump(dict(psnr=psnr, ssim=ssim, lpips=lpips), f)
+
+        for fname, img in zip(val_image_lists, images):
+            save_image(img, os.path.join(output_dir, fname))
+
+        for fname, img in zip(val_image_lists, depths):
+            plt.imsave(os.path.join(output_dir, 'depth-' + fname), img)
+
+        logger = logging.getLogger()
+        logger.handlers = []  # 移除所有的处理器
         
                 
             

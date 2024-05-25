@@ -10,6 +10,7 @@
 - 2024.05.22-1 修复性能损失。
 - 2024.05.23-1 完成Real Fed 3DGS
 - 2024.05.24-0 同步
+- 2024.05.25-0 更新联邦学习代码，发现效果已达上限。
 
 export CUDA_VISIBLE_DEVICES=1
 
@@ -82,7 +83,7 @@ python gaussian-splatting/progressively_build_global_model.py \
 ## Evaluation
 
 ```bash
-python gaussian-splatting/eval.py -w -o eval/single_8000 -g outputs/20clients/global_models/single8_000/global_model_epoch4000.pth -data datasets/rubble-pixsfm --sh-degree 3
+python gaussian-splatting/eval.py -w -o eval/kmeans-10-20_000 -g outputs/global_model/kmeans-10-20_000/global_model_epoch20000.pth -data datasets/rubble-pixsfm
 ```
 
 ## RealFed
