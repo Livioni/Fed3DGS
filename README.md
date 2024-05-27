@@ -12,6 +12,7 @@
 - 2024.05.24-0 同步
 - 2024.05.25-0 更新联邦学习代码，发现效果已达上限。
 - 2024.05.27-0 怀疑是client数量问题，并且添加ICP
+- 2024.05.27-1 同步至xns开始调试
 
 export CUDA_VISIBLE_DEVICES=1
 
@@ -99,5 +100,6 @@ python gaussian-splatting/realfed.py  \
 --index-dir client_image_lists/rubble-pixsfm_kmeans-10 \
 --model-dir outputs/10clients/real_fed_models \
 --eval-out  eval \
---clients 10
+--clients 10 \
+--overlap-img-threshold 10
 ```

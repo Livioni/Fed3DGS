@@ -606,13 +606,15 @@ if __name__ == "__main__":
     cuda_devices = torch.cuda.device_count()
     print(f"Found {cuda_devices} CUDA devices")
     trainin_round = args.clients // cuda_devices
-    test_iterations = list(range(100, 10001, 200))
+    test_iterations = list(range(100, 20001, 400))
 
+    # Epochs Settings
     aggregate_iterations = [2000, 4000, 6000, 8000, 10000, 12000, 14000, 16000, 18000, 20000]
     save_iteration_pools = [2000, 4000, 6000, 8000, 10000, 12000, 14000, 16000, 18000, 20000]
     checkpoint_iteration_pools = [2000, 4000, 6000, 8000, 10000, 12000, 14000, 16000, 18000, 20000]
     start_checkpoint_pools = [None, 2000, 4000, 6000, 8000, 10000, 12000, 14000, 16000, 18000]
     
+    # Main Loops
     for epoch in range(len(aggregate_iterations)):
         print(f"Start training epoch {epoch}")
         save_iterations = save_iteration_pools[epoch] # 用于local model 保存ply文件
@@ -627,6 +629,7 @@ if __name__ == "__main__":
             # Debug
             # parallel_local_training(0, client_index_1, lp.extract(args), op.extract(args), pp.extract(args),
             #                         test_iterations, save_iterations, checkpoint_iterations, start_checkpoint)
+            
             processes = []
             p1 = Process(target=parallel_local_training, name = f"Client_{client_index_1}",
                         args=(0, client_index_1, lp.extract(args), op.extract(args), pp.extract(args), 
@@ -645,8 +648,9 @@ if __name__ == "__main__":
             for p in processes:
                 p.join()
                     
-        torch.cuda.empty_cache()
-        print("local client {} and {} training finished".format(client_index_1, client_index_2))
+            torch.cuda.empty_cache()
+            print("local client {} and {} training finished".format(client_index_1, client_index_2))
+            print("###############################################")
         
         # Specify the filename you want to delete
         local_model_pth = f"chkpnt{start_checkpoint}.pth"
@@ -684,8 +688,10 @@ if __name__ == "__main__":
         global_params = torch.load(global_model_path)
         logger.info(f'#Gaussians {len(global_params["xyz"])}')
         logger.info('load metadata')
+       
         # set background color
         bg_color = torch.Tensor([1., 1., 1.]).cuda() if args.white_background else torch.Tensor([0., 0.,0.]).cuda()
+        
         # evaluation
         val_image_lists = sorted(os.listdir(os.path.join(args.dataset_dir, 'val/rgbs')))
         val_metadatas = [torch.load(os.path.join(args.dataset_dir, 'val/metadata', f.split('.')[0]+'.pt')) for f in val_image_lists]

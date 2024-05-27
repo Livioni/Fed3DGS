@@ -62,20 +62,22 @@
             "console": "integratedTerminal",
             "args": [
                 "-s",
-                "outputs/20clients/rubble-pixsfm_colmap_results",
+                "outputs/10clients/rubble_colmap_results_icp",
                 "-i",
                 "datasets/rubble-pixsfm/train/rgbs",
                 "-w",
                 "-m",
-                "outputs/20clients/real_fed_models_120",
+                "outputs/10clients/real_fed_models",
                 "-o",
-                "outputs/20clients/real_fed_global_models_120",
+                "outputs/10clients/real_fed_global_models",
                 "-data",
                 "datasets/rubble-pixsfm",
                 "--index-dir",
-                "client_image_lists/rubble-pixsfm_kmeans-20",
+                "client_image_lists/rubble-pixsfm_kmeans-10",
                 "--model-dir",
-                "outputs/20clients/real_fed_models_120"
+                "outputs/10clients/real_fed_models",
+                "--clients", "10",
+                "--eval-out", "eval/10clients"
             ]
         },
         {
