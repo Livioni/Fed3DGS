@@ -88,13 +88,13 @@
                 "-d",
                 "datasets/rubble-pixsfm",
                 "-o",
-                "client_image_lists/rubble-pixsfm_kmeans-20",
+                "client_image_lists/rubble-pixsfm_kmeans-10",
                 "--n-clients",
-                "20",
+                "10",
                 "--n-data-max",
-                "175",
+                "220",
                 "--n-data-min",
-                "125"
+                "170"
             ]
         },
         {

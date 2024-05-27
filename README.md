@@ -11,6 +11,7 @@
 - 2024.05.23-1 完成Real Fed 3DGS
 - 2024.05.24-0 同步
 - 2024.05.25-0 更新联邦学习代码，发现效果已达上限。
+- 2024.05.27-0 怀疑是client数量问题，并且添加ICP
 
 export CUDA_VISIBLE_DEVICES=1
 
@@ -29,9 +30,9 @@ python tools/gen_client_data.py -d datasets/rubble-pixsfm \
 ### Colmap Pre-process
 
 ```bash
-bash scripts/client_training.sh 10 19 outputs/20clients/rubble-pixsfm_colmap_results \
+bash scripts/client_training.sh 5 9 outputs/10clients/rubble-pixsfm_colmap_results \
                                      datasets/rubble-pixsfm \
-                                     client_image_lists/rubble-pixsfm_kmeans-20 \
+                                     client_image_lists/rubble-pixsfm_kmeans-10 \
                                      outputs/rubble-pixsfm_local_models
 ```
 
@@ -90,11 +91,13 @@ python gaussian-splatting/eval.py -w -o eval/kmeans-10-20_000 -g outputs/global_
 
 ```bash
 python gaussian-splatting/realfed.py  \
--s outputs/20clients/rubble-pixsfm_colmap_results \
+-s outputs/10clients/rubble_colmap_results_icp \
 -i datasets/rubble-pixsfm/train/rgbs \
--w -m outputs/20clients/real_fed_models_120 \
--o outputs/20clients/real_fed_global_models_120 \
+-w -m outputs/10clients/real_fed_models \
+-o outputs/10clients/real_fed_global_models \
 -data datasets/rubble-pixsfm \
---index-dir client_image_lists/rubble-pixsfm_kmeans-20 \
---model-dir outputs/20clients/real_fed_models_120 
+--index-dir client_image_lists/rubble-pixsfm_kmeans-10 \
+--model-dir outputs/10clients/real_fed_models \
+--eval-out  eval \
+--clients 10
 ```

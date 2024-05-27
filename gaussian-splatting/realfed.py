@@ -608,10 +608,10 @@ if __name__ == "__main__":
     trainin_round = args.clients // cuda_devices
     test_iterations = list(range(100, 10001, 200))
 
-    aggregate_iterations = [12000, 14000, 16000, 18000, 20000]
-    save_iteration_pools = [12000, 14000, 16000, 18000, 20000]
-    checkpoint_iteration_pools = [12000, 14000, 16000, 18000, 20000]
-    start_checkpoint_pools = [10000, 12000, 14000, 16000, 18000]
+    aggregate_iterations = [2000, 4000, 6000, 8000, 10000, 12000, 14000, 16000, 18000, 20000]
+    save_iteration_pools = [2000, 4000, 6000, 8000, 10000, 12000, 14000, 16000, 18000, 20000]
+    checkpoint_iteration_pools = [2000, 4000, 6000, 8000, 10000, 12000, 14000, 16000, 18000, 20000]
+    start_checkpoint_pools = [None, 2000, 4000, 6000, 8000, 10000, 12000, 14000, 16000, 18000]
     
     for epoch in range(len(aggregate_iterations)):
         print(f"Start training epoch {epoch}")
@@ -666,6 +666,8 @@ if __name__ == "__main__":
 
         # setup logger
         logger = logging.getLogger('eval')
+        if logger.hasHandlers():
+            logger.handlers.clear()  # 清除之前的handlers
         logger.setLevel(logging.INFO)
         s_handler = logging.StreamHandler(stream=sys.stdout)
         plain_formatter = logging.Formatter('[%(asctime)s] %(name)s %(levelname)s: %(message)s', datefmt='%m/%d %H:%M:%S')
@@ -706,8 +708,6 @@ if __name__ == "__main__":
         for fname, img in zip(val_image_lists, depths):
             plt.imsave(os.path.join(output_dir, 'depth-' + fname), img)
 
-        logger = logging.getLogger()
-        logger.handlers = []  # 移除所有的处理器
         
                 
             
