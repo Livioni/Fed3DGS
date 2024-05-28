@@ -14,6 +14,7 @@
 - 2024.05.27-0 怀疑是client数量问题，并且添加ICP
 - 2024.05.27-1 同步至xns开始调试
 - 2024.05.28-0 修改gaussian-splatting 至 gaussian_splatting
+- 2024.05.28-1 删除submodule 
 
 export CUDA_VISIBLE_DEVICES=1
 
