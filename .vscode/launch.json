@@ -12,15 +12,26 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "Scene",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "gaussian_splatting/scene/__init__.py",
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Evaluation",
             "type": "debugpy",
             "request": "launch",
-            "program": "gaussian-splatting/eval.py",
+            "program": "gaussian_splatting/eval.py",
             "console": "integratedTerminal",
             "args": [
-                "-w", "-o", "eval/fed_4000",
-                "-g", "outputs/20clients/real_fed_global_models/global_model_epoch4000.pth",
-                "-data", "datasets/rubble-pixsfm"
+                "-w",
+                "-o",
+                "eval/fed_4000",
+                "-g",
+                "outputs/20clients/real_fed_global_models/global_model_epoch4000.pth",
+                "-data",
+                "datasets/rubble-pixsfm"
             ]
         },
         {
@@ -42,7 +53,7 @@
             "name": "Single Local Training",
             "type": "debugpy",
             "request": "launch",
-            "program": "gaussian-splatting/train.py",
+            "program": "gaussian_splatting/train.py",
             "console": "integratedTerminal",
             "args": [
                 "-s",
@@ -58,7 +69,7 @@
             "name": "Real Federated Learning",
             "type": "debugpy",
             "request": "launch",
-            "program": "gaussian-splatting/realfed.py",
+            "program": "gaussian_splatting/realfed.py",
             "console": "integratedTerminal",
             "args": [
                 "-s",
@@ -76,8 +87,12 @@
                 "client_image_lists/rubble-pixsfm_kmeans-10",
                 "--model-dir",
                 "outputs/10clients/real_fed_models",
-                "--clients", "10",
-                "--eval-out", "eval/10clients"
+                "--clients",
+                "10",
+                "--eval-out",
+                "eval",
+                "--overlap-img-threshold",
+                "0"
             ]
         },
         {
@@ -103,7 +118,7 @@
             "name": "Progressively Gobal Training",
             "type": "debugpy",
             "request": "launch",
-            "program": "gaussian-splatting/progressively_build_global_model.py",
+            "program": "gaussian_splatting/progressively_build_global_model.py",
             "console": "integratedTerminal",
             "args": [
                 "-w",
@@ -121,7 +136,7 @@
             "name": "Gobal Training",
             "type": "debugpy",
             "request": "launch",
-            "program": "gaussian-splatting/build_global_model.py",
+            "program": "gaussian_splatting/build_global_model.py",
             "console": "integratedTerminal",
             "args": [
                 "-w",

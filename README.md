@@ -13,6 +13,7 @@
 - 2024.05.25-0 更新联邦学习代码，发现效果已达上限。
 - 2024.05.27-0 怀疑是client数量问题，并且添加ICP
 - 2024.05.27-1 同步至xns开始调试
+- 2024.05.28-0 修改gaussian-splatting 至 gaussian_splatting
 
 export CUDA_VISIBLE_DEVICES=1
 
@@ -54,7 +55,7 @@ bash scripts/device_1_training.sh 10 19 outputs/20clients/rubble-pixsfm_colmap_r
 ## Single Scene Training
 
 ```bash
-python gaussian-splatting/train.py -s outputs/15clients/rubble-pixsfm_colmap_results/00007 \
+python gaussian_splatting/train.py -s outputs/15clients/rubble-pixsfm_colmap_results/00007 \
                                    -i datasets/rubble-pixsfm/train/rgbs \
                                    -w \
                                    -m outputs/test/00007
@@ -63,7 +64,7 @@ python gaussian-splatting/train.py -s outputs/15clients/rubble-pixsfm_colmap_res
 ## Build Global Model
 
 ```bash
-python gaussian-splatting/build_global_model.py \
+python gaussian_splatting/build_global_model.py \
                                                 -w -o outputs/20clients/global_models \
                                                 -m outputs/20clients/rubble-pixsfm_local_models  \
                                                 -i client_image_lists/rubble-pixsfm_kmeans-20 \
@@ -74,7 +75,7 @@ python gaussian-splatting/build_global_model.py \
 ## Progressively_Build
 
 ```bash
-python gaussian-splatting/progressively_build_global_model.py \
+python gaussian_splatting/progressively_build_global_model.py \
                                                 -w -o outputs/20clients/global_models/single4_000 \
                                                 -m outputs/20clients/rubble-pixsfm_local_models  \
                                                 -i client_image_lists/rubble-pixsfm_kmeans-20 \
@@ -85,13 +86,13 @@ python gaussian-splatting/progressively_build_global_model.py \
 ## Evaluation
 
 ```bash
-python gaussian-splatting/eval.py -w -o eval/kmeans-10-20_000 -g outputs/global_model/kmeans-10-20_000/global_model_epoch20000.pth -data datasets/rubble-pixsfm
+python gaussian_splatting/eval.py -w -o eval/kmeans-10-20_000 -g outputs/global_model/kmeans-10-20_000/global_model_epoch20000.pth -data datasets/rubble-pixsfm
 ```
 
 ## RealFed
 
 ```bash
-python gaussian-splatting/realfed.py  \
+python gaussian_splatting/realfed.py  \
 -s outputs/10clients/rubble_colmap_results_icp \
 -i datasets/rubble-pixsfm/train/rgbs \
 -w -m outputs/10clients/real_fed_models \
@@ -101,5 +102,5 @@ python gaussian-splatting/realfed.py  \
 --model-dir outputs/10clients/real_fed_models \
 --eval-out  eval \
 --clients 10 \
---overlap-img-threshold 10
+--overlap-img-threshold 0
 ```
