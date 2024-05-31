@@ -35,6 +35,9 @@ class CameraInfo(NamedTuple):
     width: int
     height: int
 
+class BasicPointCloud_low_memo(NamedTuple):
+    points : np.array
+
 class SceneInfo(NamedTuple):
     point_cloud: BasicPointCloud
     train_cameras: list
